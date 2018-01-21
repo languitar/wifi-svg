@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+import argparse
+from io import BytesIO
+import sys
+
+from lxml import etree
+
+import qrcode
+import qrcode.constants
+import qrcode.image.svg
+
+font_args = {
+    'font-family': 'Arial',
+    'font-size': '20'
+}
+
+
+def create_net(title, ssid, key):
+
+    img = qrcode.make(f'WIFI:T:WPA;S:{ssid};P:{key};;',
+                      error_correction=qrcode.constants.ERROR_CORRECT_H,
+                      image_factory=qrcode.image.svg.SvgPathImage)
+    out = BytesIO()
+    img.save(out)
+    out.seek(0)
+    qrcode_svg = etree.parse(out).getroot()
+    qrcode_svg.set('height', '50mm')
+    qrcode_svg.set('width', '50mm')
+
+    root = etree.Element('svg',
+                         version='1.1',
+                         xmlns='http://www.w3.org/2000/svg')
+
+    root.append(qrcode_svg)
+
+    title_element = etree.SubElement(root, 'text',
+                                     attrib={
+                                         'x': '54mm',
+                                         'y': '10mm',
+                                         **font_args
+                                     })
+    title_element.text = title
+
+    ssid_element = etree.SubElement(root, 'text',
+                                    attrib={
+                                        'x': '54mm',
+                                        'y': '18mm',
+                                        **font_args
+                                    })
+    ssid_element.text = f'SSID: {ssid}'
+
+    passphrase_element = etree.SubElement(root, 'text',
+                                          attrib={
+                                              'x': '54mm',
+                                              'y': '26mm',
+                                              **font_args
+                                          })
+    passphrase_element.text = f'KEY: {key}'
+
+    return root
+
+
+def parse_arguments():
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--net',
+        dest='nets',
+        action='append',
+        nargs='+',
+        metavar=['TITLE', 'SSID', 'KEY'],
+        help='Add this wifi network to the output.')
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+
+    args = parse_arguments()
+
+    root = etree.Element('svg',
+                         version='1.1',
+                         xmlns='http://www.w3.org/2000/svg')
+    for i, (title, ssid, key) in enumerate(args.nets):
+        net = create_net(title, ssid, key)
+        net.set('y', '{}mm'.format(i * 54))
+        root.append(net)
+
+    sys.stdout.buffer.write(etree.tostring(root, encoding='utf-8'))
