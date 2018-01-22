@@ -81,9 +81,19 @@ if __name__ == '__main__':
     root = etree.Element('svg',
                          version='1.1',
                          xmlns='http://www.w3.org/2000/svg')
+
+    background = etree.SubElement(root, 'rect')
+    background.set('width', '100%')
+    background.set('height', '100%')
+    background.set('fill', 'white')
+
     for i, (title, ssid, key) in enumerate(args.nets):
         net = create_net(title, ssid, key)
         net.set('y', '{}mm'.format(i * 54))
         root.append(net)
 
-    sys.stdout.buffer.write(etree.tostring(root, encoding='utf-8'))
+    root.set('width', '{}mm'.format(160))
+    root.set('height', '{}mm'.format(54 * (i + 1)))
+
+    sys.stdout.buffer.write(etree.tostring(root, encoding='utf-8',
+                                           pretty_print=True))
